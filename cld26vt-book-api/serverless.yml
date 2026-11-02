@@ -1,0 +1,78 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: zocom
+# "service" is the name of this project. This will also be added to your AWS resource names.
+service: cld26vt-book-api
+
+provider:
+  name: aws
+  region: eu-north-1
+  runtime: python3.14
+  architecture: arm64
+  iam:
+    role: arn:aws:iam::{accountId}:role/{roleName}
+  # Uncomment to easily set up a custom domain. Read the docs for more details:
+  # https://www.serverless.com/framework/docs/providers/aws/guide/domains
+  # domain: api.example.com
+
+functions:
+  addBook:
+    handler: functions/add-book/lambda_function.lambda_handler
+    events:
+      - httpApi:
+          path: /book
+          method: post
+
+  addMember:
+    handler: functions/add-member/lambda_function.lambda_handler
+    events:
+      - httpApi:
+          path: /member
+          method: post
+  addReview:
+    handler: functions/add-review/lambda_function.lambda_handler
+    events:
+      - httpApi:
+          path: /review
+          method: post
+
+  # GET /book?isbn=321312843718
+  # GET /book/321312843718/reviews
+  getReviewsByBook:
+    handler: functions/get-reviews-by-book/lambda_function.lambda_handler
+    events:
+      - httpApi:
+          path: /book/reviews
+          method: get
+
+resources:
+  Resources:
+    cld26vtBookDb:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: cld26vt-books-table
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S # Sträng som datatyp
+          - AttributeName: sk
+            AttributeType: S
+          - AttributeName: rating
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH # HASH = Partition key
+          - AttributeName: sk
+            KeyType: RANGE # RANGE = Sort key
+        GlobalSecondaryIndexes:
+          - IndexName: ratingIndex
+            KeySchema:
+              - AttributeName: rating
+                KeyType: HASH
+              - AttributeName: pk
+                KeyType: RANGE
+            Projection:
+              ProjectionType: INCLUDE # Returnerar bara keys (rating och pk) samt title och author
+              NonKeyAttributes:
+                - title
+                - author
+
+        BillingMode: PAY_PER_REQUEST
